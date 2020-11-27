@@ -4,6 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
 from time import sleep
 import random
+import os
 
 ACC_FILE = "accounts.txt"
 TWEETS_FILE = "tweets.txt"
@@ -129,10 +130,20 @@ if len(get_tweets()) >= 95:
 
 def start(username, passwd):
 
-    try:
-        driver = webdriver.Firefox()
-    except selenium.common.exceptions.WebDriverException:
-        exit("Couldn't find geckodriver:\nPlease download it from https://github.com/mozilla/geckodriver/releases and add it to your PATH.")
+    if os.path.exists("C:\\Program Files\\Mozilla Firefox"):
+
+        try:
+            driver = webdriver.Firefox()
+        except selenium.common.exceptions.WebDriverException:
+            exit("Couldn't find geckodriver:\nPlease download it from https://github.com/mozilla/geckodriver/releases and add it to your PATH.")
+
+    elif os.path.exists("C:\\Program Files (x86)\\Google") | os.path.exists("C:\\Users\\%USERNAME%\\AppData\\Local\\Google\\Chrome"):
+
+        try:
+            driver = webdriver.Chrome()
+        except selenium.common.exceptions.WebDriverException:
+            exit("Couldn't find chromedriver:\nPlease download it from https://chromedriver.chromium.org/ and add it to your PATH.")
+
 
     driver.minimize_window()
     twitterActions.driver = driver
