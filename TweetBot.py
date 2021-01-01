@@ -3,6 +3,7 @@ import random
 import os
 import sys
 import zipfile
+import tarfile
 
 try:
     import requests
@@ -21,6 +22,9 @@ except ImportError:
 import selenium.common.exceptions
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
+from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+
+VERSION = "1.2"
 
 ACC_FILE = "accounts.txt"
 TWEETS_FILE = "tweets.txt"
@@ -37,15 +41,23 @@ TWEETS_TWEETED = 0
 CHECK_AFTER_N_TWEETS = 5
 DRIVER_TYPE = ""
 
+GECKODRIVERS_VERSION = "v0.28.0"
 GECKODRIVERS_URLS = {
-    "win32-geckodriver": "https://github.com/mozilla/geckodriver/releases/download/v0.28.0/geckodriver-v0.28.0-win32.zip",
-    "win64-geckodriver": "https://github.com/mozilla/geckodriver/releases/download/v0.28.0/geckodriver-v0.28.0-win64.zip",
-    "linux32-geckodriver": "https://github.com/mozilla/geckodriver/releases/download/v0.28.0/geckodriver-v0.28.0-linux32.tar.gz",
-    "linux64-geckodriver": "https://github.com/mozilla/geckodriver/releases/download/v0.28.0/geckodriver-v0.28.0-linux64.tar.gz",
-    "macos-geckodriver": "https://github.com/mozilla/geckodriver/releases/download/v0.28.0/geckodriver-v0.28.0-macos.tar.gz"
+    "win32-geckodriver": f"https://github.com/mozilla/geckodriver/releases/download/{GECKODRIVERS_VERSION}/geckodriver-{GECKODRIVERS_VERSION}-win32.zip",
+    "win64-geckodriver": f"https://github.com/mozilla/geckodriver/releases/download/{GECKODRIVERS_VERSION}/geckodriver-{GECKODRIVERS_VERSION}-win64.zip",
+    "linux32-geckodriver": f"https://github.com/mozilla/geckodriver/releases/download/{GECKODRIVERS_VERSION}/geckodriver-{GECKODRIVERS_VERSION}-linux32.tar.gz",
+    "linux64-geckodriver": f"https://github.com/mozilla/geckodriver/releases/download/{GECKODRIVERS_VERSION}/geckodriver-{GECKODRIVERS_VERSION}-linux64.tar.gz",
+    "macos-geckodriver": f"https://github.com/mozilla/geckodriver/releases/download/{GECKODRIVERS_VERSION}/geckodriver-{GECKODRIVERS_VERSION}-macos.tar.gz"
                 }
 
-banner1 = """
+CHROMIUM_VERSION = "88.0.4324.27"
+CHROMIUM_URLS = {
+    "win32-chromium": f"https://chromedriver.storage.googleapis.com/{CHROMIUM_VERSION}/chromedriver_win32.zip",
+    "linux64-chromium": f"https://chromedriver.storage.googleapis.com/{CHROMIUM_VERSION}/chromedriver_linux64.zip",
+    "macos-chromium": f"https://chromedriver.storage.googleapis.com/{CHROMIUM_VERSION}/chromedriver_mac64.zip"
+                }
+
+banner1 = r"""
                                      |\    /|     
                                   ___| \,,/_/     
                                ---__/ \/    \     
@@ -63,11 +75,11 @@ banner1 = """
      |  |   -  |                 | )     | |      
       | |    | |                 | |    | |       
       | |    < |                 | |   |_/        
-      < |    /__\                <  \    TweetBot V 1.2
+      < |    /__\                <  \    TweetBot V """ + VERSION + """ 
       /__\                       /___\            
 
 """
-banner2 = '''
+banner2 = r"""
                                         | 
                     ____________    __ -+-  ____________ 
                     \_____     /   /_ \ |   \     _____/
@@ -75,14 +87,14 @@ banner2 = '''
                       \_____    TweetBot        _____/
                          \___________  ___________/
                                    /____\                         
-                                       `-.___.-' Version: 1.2
-'''
+                                       `-.___.-' Version: """ + VERSION + """ 
+"""
 
 
-banner3 = '''
+banner3 = """
           |_|_|
           |_|_|              _____
-          |_|_|     ____    |*_*_*| TweetBot V -> 1.2
+          |_|_|     ____    |*_*_*| TweetBot V -> """ + VERSION + """ 
  _______   _\__\___/ __ \____|_|_   _______
 / ____  |=|      \  <_+>  /      |=|  ____ \\
 ~|    |\|=|======\\\\______//======|=|/|    |~
@@ -103,7 +115,7 @@ banner3 = '''
               |/~~~\|  |/~~~\|
               /|___|\  /|___|\\
              <_______><_______>
-'''
+"""
 banner_list = [banner1, banner2, banner3]
 
 
@@ -122,10 +134,12 @@ class MainFunctions:
                 DRIVER_TYPE = "firefox"
             elif os.path.exists("C:\\Program Files (x86)\\Google") | os.path.exists("C:\\Users\\%USERNAME%\\AppData\\Local\\Google\\Chrome"):
                 DRIVER_TYPE = "chrome"
+            DRIVER_TYPE = "chrome"
 
             return "windows"
 
         elif sys.platform.startswith('linux'):
+            DRIVER_TYPE = "firefox"
             return "linux"
 
         elif sys.platform.startswith('darwin'):
@@ -150,7 +164,10 @@ class MainFunctions:
                 zip_ref.extractall(str(os.getcwd()))
 
         elif operating_system == "linux":
-            pass
+            with tarfile.open(file_path) as tar_ref:
+                tar_ref.extractall(str(os.getcwd()))
+            os.system(f"export PATH=$PATH:{os.getcwd()}")
+
         elif operating_system == "macos":
             pass
 
@@ -294,10 +311,13 @@ print(random.choice(banner_list))
 
 def start(username, passwd):
 
+    driver = None
+
     if DRIVER_TYPE == "firefox":
 
         try:
             driver = webdriver.Firefox()
+
         except selenium.common.exceptions.WebDriverException:
             architecture = input("[*] OS Architecture (32 or 64): ")
 
@@ -320,7 +340,18 @@ def start(username, passwd):
         try:
             driver = webdriver.Chrome()
         except selenium.common.exceptions.WebDriverException:
-            exit("Couldn't find chromedriver:\nPlease download it from https://chromedriver.chromium.org/ and add it to your PATH.")
+
+            if OS == "windows":
+                downloaded_file = MainFunctions.download_driver(CHROMIUM_URLS["win32-chromium"])
+                MainFunctions.handle_downloaded_driver(downloaded_file, OS)
+            try:
+                driver = webdriver.Chrome()
+            except selenium.common.exceptions.SessionNotCreatedException:
+                exit("[-] Please update chrome to the latest version.\n"
+                     "[*] You can install firefox instead of using chrome.")
+
+    if driver is None:
+        exit("[-] Unknown driver error !")
 
     driver.minimize_window()
     twitterActions.driver = driver
