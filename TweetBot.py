@@ -6,25 +6,47 @@ import zipfile
 import tarfile
 
 try:
+    import argparse
+except ImportError:
+    print("* Couldn't find requests, trying to install argparse using pip3 ..")
+    os.system("pip3 install argparse")
+    try:
+        import argparse
+    except ImportError:
+        print("* Couldn't find requests, trying to install argparse using pip ..")
+        os.system("pip install argparse")
+        import argparse
+
+try:
     import requests
 except ImportError:
-    print("* Couldn't find requests, trying to install requests ..")
-    os.system("pip install requests")
-    import requests
+    print("* Couldn't find requests, trying to install requests using pip3 ..")
+    os.system("pip3 install requests")
+    try:
+        import requests
+    except ImportError:
+        print("* Couldn't find requests, trying to install requests using pip ..")
+        os.system("pip install requests")
+        import requests
 
 try:
     from selenium import webdriver
 except ImportError:
-    print("* Couldn't find selenium, trying to install selenium ..")
-    os.system("pip install selenium")
-    from selenium import webdriver
+    print("* Couldn't find selenium, trying to install selenium using pip3 ..")
+    os.system("pip3 install selenium")
+    try:
+        from selenium import webdriver
+    except ImportError:
+        print("* Couldn't find selenium, trying to install selenium using pip ..")
+        os.system("pip3 install selenium")
+        from selenium import webdriver
 
 import selenium.common.exceptions
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 
-VERSION = "1.2"
+VERSION = "1.4"
 
 ACC_FILE = "accounts.txt"
 TWEETS_FILE = "tweets.txt"
@@ -76,7 +98,7 @@ banner1 = r"""
       | |    | |                 | |    | |       
       | |    < |                 | |   |_/        
       < |    /__\                <  \    TweetBot V """ + VERSION + """ 
-      /__\                       /___\            
+      /__\\                       /___\\            
 
 """
 banner2 = r"""
@@ -116,7 +138,14 @@ banner3 = """
               /|___|\  /|___|\\
              <_______><_______>
 """
+
 banner_list = [banner1, banner2, banner3]
+
+parser = argparse.ArgumentParser(description='Developed By HDMX.')
+parser.add_argument('-fd', '--firefox-driver', action='store_true', help='Force the bot to use firefox (geckodriver).')
+parser.add_argument('-cd', '--chrome-driver', action='store_true', help='Force the bot to use chrome (chromium).')
+parser.add_argument('-v', '--version', action="store_true", help="show software version.")
+args = parser.parse_args()
 
 
 class MainFunctions:
@@ -134,7 +163,6 @@ class MainFunctions:
                 DRIVER_TYPE = "firefox"
             elif os.path.exists("C:\\Program Files (x86)\\Google") | os.path.exists("C:\\Users\\%USERNAME%\\AppData\\Local\\Google\\Chrome"):
                 DRIVER_TYPE = "chrome"
-            DRIVER_TYPE = "chrome"
 
             return "windows"
 
@@ -143,6 +171,7 @@ class MainFunctions:
             return "linux"
 
         elif sys.platform.startswith('darwin'):
+            DRIVER_TYPE = "firefox"
             return "macos"
 
     def download_driver(self, url):
@@ -169,7 +198,8 @@ class MainFunctions:
             os.system(f"export PATH=$PATH:{os.getcwd()}")
 
         elif operating_system == "macos":
-            pass
+            with tarfile.open(file_path) as tar_ref:
+                tar_ref.extractall(str(os.getcwd()))
 
         sleep(.3)
         os.remove(file_path)
@@ -261,15 +291,18 @@ class TwitterActions:
 
     def tweet(self, string, hashtag):
 
-        loop = True
-        while loop is True:
+        for i in range(5):
+
             try:
                 text_area = self.driver.find_element_by_class_name("public-DraftEditor-content")
-                loop = False
             except:
                 sleep(2)
 
-        text_area.clear()
+        try:
+            text_area.clear()
+        except:
+            exit("[-] Couldn't find text_area ! Your internet may be slow or you interacted with the browser.")
+
         text_area.send_keys(string)
         text_area.send_keys(Keys.RETURN)
         text_area.send_keys(hashtag + " ")
@@ -298,8 +331,20 @@ class TwitterActions:
         return False
 
 
+if args.version is True:
+    exit(f"TweetBot Version: {VERSION}V")
+
 MainFunctions = MainFunctions()
 twitterActions = TwitterActions()
+
+if os.path.isfile(ACC_FILE) is not True:
+    exit(f"[-] Couldn't find {ACC_FILE} !")
+
+if os.path.isfile(TWEETS_FILE) is not True:
+    exit(f"[-] Couldn't find {TWEETS_FILE} !")
+
+if os.path.isfile(HASHTAGS_FILE) is not True:
+    exit(f"[-] Couldn't find {HASHTAGS_FILE} !")
 
 if len(MainFunctions.get_tweets()) > 95:
     lines_to_delete = len(MainFunctions.get_tweets()) - 95
@@ -307,6 +352,12 @@ if len(MainFunctions.get_tweets()) > 95:
 
 OS = MainFunctions.detect_os()
 print(random.choice(banner_list))
+
+if args.firefox_driver is True:
+    DRIVER_TYPE = "firefox"
+
+elif args.chrome_driver is True:
+    DRIVER_TYPE = "chrome"
 
 
 def start(username, passwd):
@@ -324,16 +375,17 @@ def start(username, passwd):
             if OS == "windows":
                 downloaded_file = MainFunctions.download_driver(GECKODRIVERS_URLS[f"win{architecture}-geckodriver"])
                 MainFunctions.handle_downloaded_driver(downloaded_file, OS)
+                driver = webdriver.Firefox()
 
             elif OS == "linux":
                 downloaded_file = MainFunctions.download_driver(GECKODRIVERS_URLS[f"linux{architecture}-geckodriver"])
                 MainFunctions.handle_downloaded_driver(downloaded_file, OS)
+                driver = webdriver.Firefox()
 
             elif OS == "macos":
                 downloaded_file = MainFunctions.download_driver(GECKODRIVERS_URLS["macos-geckodriver"])
                 MainFunctions.handle_downloaded_driver(downloaded_file, OS)
-
-            driver = webdriver.Firefox()
+                driver = webdriver.Firefox(executable_path=f'{os.getcwd()}/geckodriver')
 
     elif DRIVER_TYPE == "chrome":
 
@@ -346,7 +398,7 @@ def start(username, passwd):
                 MainFunctions.handle_downloaded_driver(downloaded_file, OS)
             try:
                 driver = webdriver.Chrome()
-            except selenium.common.exceptions.SessionNotCreatedException:
+            except:
                 exit("[-] Please update chrome to the latest version.\n"
                      "[*] You can install firefox instead of using chrome.")
 
