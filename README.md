@@ -8,7 +8,7 @@
 
     git clone https://github.com/wasfyelbaz/TweetBot.git
     cd TweetBot
-    python3 TweetBot.py
+    py TweetBot.py
 
 ## Command line options
 
@@ -23,9 +23,9 @@ $ python3 TweetBot.py -h
 ## Usage
 
 * edit "accounts.txt" file, add any number of twitter accounts on the following form: `USER:PASSWD`
-* edit "tweets.txt" file, add 95 tweets **[one each line]**
+* edit "tweets.txt" file, add your tweets **[one each line]**
 * edit "hashtags.txt" file, add hashtags that you want to combine with tweets **[one each line with the hash symbol]**
-* `python3 TweetBot.py`, Happy tweeting !
+* `py TweetBot.py`, Happy tweeting !
 
 ## Features !
 
@@ -33,7 +33,8 @@ $ python3 TweetBot.py -h
 * Multi-account.
 * Fast Bot.
 * User Friendly.
+* Imitating human behavior.
 
 ## Disclaimer
 
-* We aren't responsible for using this tool in spamming or any illegal activities !
+* I am not responsible for using this tool in spamming or any illegal activities !
